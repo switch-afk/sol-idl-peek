@@ -94,12 +94,16 @@ function renderInstruction(detail) {
   return lines.join('\n') + '\n';
 }
 
+// A few programs have very long error names; cap the column so one of them
+// does not push every message far to the right.
+const MAX_NAME_WIDTH = 30;
+
 function renderErrors(errors) {
   if (errors.length === 0) return 'This IDL has no errors.\n';
 
   const codes = errors.map((e) => (e.code === null ? '-' : String(e.code)));
   const codeWidth = Math.max(...codes.map((c) => c.length));
-  const nameWidth = Math.max(...errors.map((e) => e.name.length));
+  const nameWidth = Math.min(Math.max(...errors.map((e) => e.name.length)), MAX_NAME_WIDTH);
 
   const rows = errors.map((error, i) => {
     const row = `${codes[i].padEnd(codeWidth)}  ${error.name.padEnd(nameWidth)}`;

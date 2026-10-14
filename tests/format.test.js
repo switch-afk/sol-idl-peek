@@ -127,6 +127,18 @@ test('renderErrors aligns code, name and message', () => {
   );
 });
 
+test('renderErrors caps the name column so one long name does not widen every row', () => {
+  const longName = 'X'.repeat(50);
+  const out = renderErrors([
+    { code: 1, name: 'Short', msg: 'a' },
+    { code: 2, name: longName, msg: 'b' },
+  ]);
+  assert.equal(
+    out,
+    ['Errors (2)', `  1  Short${' '.repeat(25)}  a`, `  2  ${longName}  b`, ''].join('\n')
+  );
+});
+
 test('renderErrors handles a missing code and an empty list', () => {
   assert.match(renderErrors([{ code: null, name: 'Odd', msg: 'x' }]), /^ {2}- {2}Odd {2}x$/m);
   assert.equal(renderErrors([]), 'This IDL has no errors.\n');
