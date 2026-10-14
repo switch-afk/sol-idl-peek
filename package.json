@@ -1,0 +1,38 @@
+{
+  "name": "sol-idl-peek",
+  "version": "0.0.1",
+  "description": "Peek at the on-chain Anchor IDL of any Solana program from your terminal",
+  "bin": {
+    "sol-idl-peek": "bin/sol-idl-peek.js"
+  },
+  "main": "src/cli.js",
+  "files": [
+    "bin",
+    "src",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "solana",
+    "anchor",
+    "idl",
+    "program",
+    "cli",
+    "zero-dependency"
+  ],
+  "author": "Blue Brick",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/switch-afk/sol-idl-peek.git"
+  },
+  "bugs": {
+    "url": "https://github.com/switch-afk/sol-idl-peek/issues"
+  },
+  "homepage": "https://github.com/switch-afk/sol-idl-peek#readme"
+}
