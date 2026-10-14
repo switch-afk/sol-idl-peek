@@ -3,6 +3,7 @@
 const { parseArgs, UsageError } = require('./args');
 const { createRpcClient, resolveRpcUrl, RpcError } = require('./rpc');
 const { fetchIdl, IdlError } = require('./idl');
+const { renderText, renderJson } = require('./format');
 const { version } = require('../package.json');
 
 const HELP = `sol-idl-peek v${version}
@@ -15,7 +16,7 @@ Usage:
 
 Options:
   --rpc <url>       RPC endpoint (or set SOL_IDL_PEEK_RPC)
-  --json            Print machine-readable JSON
+  --json            Print the full IDL as JSON
   -h, --help        Show this help
   -v, --version     Show the version
 `;
@@ -52,8 +53,8 @@ async function run(argv, io = {}) {
   });
 
   try {
-    const { idl } = await fetchIdl(client, opts.program);
-    stdout.write(JSON.stringify(idl, null, 2) + '\n');
+    const result = await fetchIdl(client, opts.program);
+    stdout.write(opts.json ? renderJson(result) : renderText(result));
     return 0;
   } catch (err) {
     if (err instanceof RpcError || err instanceof IdlError) {
