@@ -43,12 +43,16 @@ function typeToString(type) {
   return 'unknown';
 }
 
-// Reduces an IDL, in either the old (Anchor 0.29 and older) or the new
-// (Anchor 0.30+) format, to what the text output needs.
-function summarizeIdl(idl) {
+function assertIdlObject(idl) {
   if (!idl || typeof idl !== 'object' || Array.isArray(idl)) {
     throw new IdlError('The IDL is not a JSON object', 'invalid');
   }
+}
+
+// Reduces an IDL, in either the old (Anchor 0.29 and older) or the new
+// (Anchor 0.30+) format, to what the text output needs.
+function summarizeIdl(idl) {
+  assertIdlObject(idl);
 
   const meta = idl.metadata && typeof idl.metadata === 'object' ? idl.metadata : {};
 
@@ -70,4 +74,4 @@ function summarizeIdl(idl) {
   };
 }
 
-module.exports = { typeToString, summarizeIdl };
+module.exports = { typeToString, summarizeIdl, assertIdlObject, list, text, nameOf };

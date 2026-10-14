@@ -54,3 +54,36 @@ test('--rpc needs a valid http(s) URL and never echoes it', () => {
   });
   assert.throws(() => parseArgs([PROGRAM, '--rpc', 'garbage']), /valid http\(s\) URL/);
 });
+
+test('parses --instruction in both forms', () => {
+  assert.equal(parseArgs([PROGRAM, '--instruction', 'swap']).instruction, 'swap');
+  assert.equal(parseArgs(['--instruction=swap', PROGRAM]).instruction, 'swap');
+  assert.equal(parseArgs([PROGRAM]).instruction, null);
+});
+
+test('--instruction needs a name', () => {
+  assert.throws(() => parseArgs([PROGRAM, '--instruction']), /--instruction needs a name/);
+  assert.throws(() => parseArgs([PROGRAM, '--instruction=']), /--instruction needs a name/);
+  assert.throws(() => parseArgs([PROGRAM, '--instruction', '--json']), /--instruction needs a name/);
+});
+
+test('parses --errors and --types, which take no value', () => {
+  assert.equal(parseArgs([PROGRAM, '--errors']).errors, true);
+  assert.equal(parseArgs([PROGRAM, '--types']).types, true);
+  assert.equal(parseArgs([PROGRAM]).errors, false);
+  assert.equal(parseArgs([PROGRAM]).types, false);
+  assert.throws(() => parseArgs([PROGRAM, '--errors=1']), /--errors does not take a value/);
+  assert.throws(() => parseArgs([PROGRAM, '--types=1']), /--types does not take a value/);
+});
+
+test('only one of --instruction, --errors and --types at a time', () => {
+  const message = /Use only one of --instruction, --errors and --types/;
+  assert.throws(() => parseArgs([PROGRAM, '--errors', '--types']), message);
+  assert.throws(() => parseArgs([PROGRAM, '--instruction', 'swap', '--errors']), message);
+  assert.throws(() => parseArgs([PROGRAM, '--instruction', 'swap', '--types']), message);
+  assert.equal(parseArgs([PROGRAM, '--errors', '--json']).json, true);
+});
+
+test('--help still works alongside conflicting views', () => {
+  assert.equal(parseArgs(['--errors', '--types', '--help']).help, true);
+});

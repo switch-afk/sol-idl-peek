@@ -3,7 +3,22 @@
 const { parseArgs, UsageError } = require('./args');
 const { createRpcClient, resolveRpcUrl, RpcError } = require('./rpc');
 const { fetchIdl, IdlError } = require('./idl');
-const { renderText, renderJson } = require('./format');
+const {
+  findInstruction,
+  describeInstruction,
+  rawErrors,
+  listErrors,
+  rawTypes,
+  listTypes,
+} = require('./detail');
+const {
+  renderText,
+  renderJson,
+  renderJsonValue,
+  renderInstruction,
+  renderErrors,
+  renderTypes,
+} = require('./format');
 const { version } = require('../package.json');
 
 const HELP = `sol-idl-peek v${version}
@@ -15,11 +30,30 @@ Usage:
   sol-idl-peek <program-address> [options]
 
 Options:
-  --rpc <url>       RPC endpoint (or set SOL_IDL_PEEK_RPC)
-  --json            Print the full IDL as JSON
-  -h, --help        Show this help
-  -v, --version     Show the version
+  --instruction <name>  Show one instruction in full: args, accounts, docs
+  --errors              List every error code and message
+  --types               List every struct and enum
+  --rpc <url>           RPC endpoint (or set SOL_IDL_PEEK_RPC)
+  --json                Print the full IDL as JSON (or just the part you picked)
+  -h, --help            Show this help
+  -v, --version         Show the version
 `;
+
+function output(result, opts) {
+  const { idl } = result;
+
+  if (opts.instruction !== null) {
+    const raw = findInstruction(idl, opts.instruction);
+    return opts.json ? renderJsonValue(raw) : renderInstruction(describeInstruction(raw));
+  }
+  if (opts.errors) {
+    return opts.json ? renderJsonValue(rawErrors(idl)) : renderErrors(listErrors(idl));
+  }
+  if (opts.types) {
+    return opts.json ? renderJsonValue(rawTypes(idl)) : renderTypes(listTypes(idl));
+  }
+  return opts.json ? renderJson(result) : renderText(result);
+}
 
 async function run(argv, io = {}) {
   const stdout = io.stdout || process.stdout;
@@ -54,7 +88,7 @@ async function run(argv, io = {}) {
 
   try {
     const result = await fetchIdl(client, opts.program);
-    stdout.write(opts.json ? renderJson(result) : renderText(result));
+    stdout.write(output(result, opts));
     return 0;
   } catch (err) {
     if (err instanceof RpcError || err instanceof IdlError) {

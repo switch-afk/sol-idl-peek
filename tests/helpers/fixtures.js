@@ -55,7 +55,16 @@ const OLD_STYLE_IDL = {
     },
     {
       name: 'addValidator',
-      accounts: [],
+      accounts: [
+        {
+          name: 'common',
+          accounts: [
+            { name: 'state', isMut: true, isSigner: false },
+            { name: 'authority', isMut: false, isSigner: true },
+          ],
+        },
+        { name: 'rentPayer', isMut: true, isSigner: true, isOptional: true },
+      ],
       args: [
         { name: 'index', type: 'u32' },
         { name: 'score', type: { option: 'u32' } },
@@ -63,10 +72,71 @@ const OLD_STYLE_IDL = {
       ],
     },
   ],
-  accounts: [{ name: 'State', type: { kind: 'struct', fields: [] } }],
-  types: [{ name: 'Fee', type: { kind: 'struct', fields: [] } }],
+  accounts: [{ name: 'State', type: { kind: 'struct', fields: [{ name: 'validatorCount', type: 'u32' }] } }],
+  types: [{ name: 'Fee', type: { kind: 'struct', fields: [{ name: 'basisPoints', type: 'u32' }] } }],
   events: [{ name: 'DepositEvent', fields: [{ name: 'amount', type: 'u64', index: false }] }],
   errors: [{ code: 6000, name: 'WrongReserveOwner', msg: 'Wrong reserve owner' }],
+};
+
+// New style IDL with docs, nested accounts, fixed addresses, PDAs, returns and a mix of types.
+const DETAIL_IDL = {
+  address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+  metadata: { name: 'detail', version: '1.2.3', spec: '0.1.0' },
+  instructions: [
+    {
+      name: 'swap',
+      docs: ['Swap one token for another.', '', '### Authority', '- `owner` signs.'],
+      discriminator: [248, 198, 158, 145, 225, 117, 135, 200],
+      accounts: [
+        { name: 'pool', writable: true, pda: { seeds: [] } },
+        { name: 'owner', signer: true },
+        {
+          name: 'vaults',
+          accounts: [
+            { name: 'vault_a', writable: true },
+            { name: 'vault_b', writable: true, optional: true },
+          ],
+        },
+        { name: 'token_program', address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+      ],
+      args: [
+        { name: 'amount', type: 'u64' },
+        { name: 'route', type: { vec: { defined: { name: 'Hop' } } } },
+      ],
+      returns: 'u64',
+    },
+    { name: 'swap_v2', discriminator: [1, 2, 3], accounts: [], args: [] },
+    { name: 'collect_fees', accounts: [], args: [] },
+    { name: 'collect_fees_v2', accounts: [], args: [] },
+  ],
+  errors: [
+    { code: 6000, name: 'Unauthorized', msg: 'Not allowed' },
+    { code: 6001, name: 'Overflow', msg: 'Math overflow' },
+    { code: 6100, name: 'Silent' },
+  ],
+  types: [
+    { name: 'Hop', type: { kind: 'struct', fields: [{ name: 'pool', type: 'pubkey' }, { name: 'fee_bps', type: 'u16' }] } },
+    { name: 'Pair', type: { kind: 'struct', fields: ['u8', { vec: 'u16' }] } },
+    { name: 'Marker', type: { kind: 'struct' } },
+    {
+      name: 'Mode',
+      type: {
+        kind: 'enum',
+        variants: [
+          { name: 'Fast' },
+          { name: 'Exact', fields: [{ name: 'amount', type: 'u64' }, { name: 'slippage', type: 'u16' }] },
+          { name: 'Split', fields: ['u8', 'u8'] },
+        ],
+      },
+    },
+    { name: 'Alias', type: { kind: 'type', alias: { array: ['u8', 32] } } },
+    {
+      name: 'Wrapper',
+      generics: [{ kind: 'type', name: 'T' }, { kind: 'const', name: 'N', type: 'usize' }],
+      type: { kind: 'struct', fields: [{ name: 'inner', type: { generic: 'T' } }] },
+    },
+    { name: 'Odd' },
+  ],
 };
 
 // Builds raw IDL account bytes the way Anchor stores them.
@@ -100,6 +170,7 @@ module.exports = {
   AUTHORITY,
   SAMPLE_IDL,
   OLD_STYLE_IDL,
+  DETAIL_IDL,
   idlAccountBytes,
   accountInfo,
 };
