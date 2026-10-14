@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { run } = require('../src/cli');
 const { version } = require('../package.json');
 const { createMockRpc, httpError } = require('./helpers/mock-rpc');
-const { SAMPLE_IDL, OLD_STYLE_IDL, idlAccountBytes, accountInfo } = require('./helpers/fixtures');
+const { SAMPLE_IDL, OLD_STYLE_IDL, DETAIL_IDL, idlAccountBytes, accountInfo } = require('./helpers/fixtures');
 
 const PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
@@ -27,6 +27,9 @@ test('--help prints usage and exits 0', async () => {
   assert.match(stdout.data, /SOL_IDL_PEEK_RPC/);
   assert.match(stdout.data, /--json/);
   assert.match(stdout.data, /full IDL/);
+  assert.match(stdout.data, /--instruction <name>/);
+  assert.match(stdout.data, /--errors/);
+  assert.match(stdout.data, /--types/);
 });
 
 test('--version prints the package version', async () => {
@@ -128,4 +131,78 @@ test('RPC failures exit 1 and never print the URL', async () => {
   assert.equal(code, 1);
   assert.match(stderr.data, /rpc\.example\.com returned HTTP 500/);
   assert.ok(!stderr.data.includes('secret'));
+});
+
+async function runDetail(extraArgs) {
+  const mock = createMockRpc({ getAccountInfo: accountInfo(idlAccountBytes(DETAIL_IDL), PROGRAM) });
+  const stdout = sink();
+  const stderr = sink();
+  const code = await run([PROGRAM, ...extraArgs], { stdout, stderr, fetch: mock.fetch, env: {} });
+  return { code, stdout: stdout.data, stderr: stderr.data };
+}
+
+test('--instruction shows one instruction in full', async () => {
+  const { code, stdout, stderr } = await runDetail(['--instruction', 'swap']);
+  assert.equal(code, 0);
+  assert.equal(stderr, '');
+  assert.match(stdout, /^Instruction: {4}swap$/m);
+  assert.match(stdout, /^Accounts \(5\)$/m);
+  assert.match(stdout, /^ {2}2 {2}owner {11}signer$/m);
+});
+
+test('--instruction matches loosely and --json prints just that instruction', async () => {
+  const { code, stdout } = await runDetail(['--instruction', 'Collect-Fees', '--json']);
+  assert.equal(code, 0);
+  assert.deepEqual(JSON.parse(stdout), DETAIL_IDL.instructions[2]);
+});
+
+test('--instruction with an unknown name exits 1 and suggests names', async () => {
+  const { code, stdout, stderr } = await runDetail(['--instruction', 'collect']);
+  assert.equal(code, 1);
+  assert.equal(stdout, '');
+  assert.match(stderr, /No instruction named "collect" in this IDL\. Did you mean: collect_fees, collect_fees_v2\?/);
+});
+
+test('--errors lists every error and --json prints the raw array', async () => {
+  const text = await runDetail(['--errors']);
+  assert.equal(text.code, 0);
+  assert.match(text.stdout, /^Errors \(3\)$/m);
+  assert.match(text.stdout, /^ {2}6001 {2}Overflow {6}Math overflow$/m);
+
+  const json = await runDetail(['--errors', '--json']);
+  assert.deepEqual(JSON.parse(json.stdout), DETAIL_IDL.errors);
+});
+
+test('--types lists every type and --json prints the raw array', async () => {
+  const text = await runDetail(['--types']);
+  assert.equal(text.code, 0);
+  assert.match(text.stdout, /^Types \(7\)$/m);
+  assert.match(text.stdout, /^Hop \(struct\)$/m);
+
+  const json = await runDetail(['--types', '--json']);
+  assert.deepEqual(JSON.parse(json.stdout), DETAIL_IDL.types);
+});
+
+test('combining views is a usage error that never touches the network', async () => {
+  const mock = createMockRpc({});
+  const stderr = sink();
+  const code = await run([PROGRAM, '--errors', '--types'], {
+    stdout: sink(),
+    stderr,
+    fetch: mock.fetch,
+    env: {},
+  });
+  assert.equal(code, 2);
+  assert.match(stderr.data, /Use only one of --instruction, --errors and --types/);
+  assert.equal(mock.calls.length, 0);
+});
+
+test('--errors on an IDL without errors says so', async () => {
+  const mock = createMockRpc({
+    getAccountInfo: accountInfo(idlAccountBytes({ instructions: [] }), PROGRAM),
+  });
+  const stdout = sink();
+  const code = await run([PROGRAM, '--errors'], { stdout, stderr: sink(), fetch: mock.fetch, env: {} });
+  assert.equal(code, 0);
+  assert.equal(stdout.data, 'This IDL has no errors.\n');
 });

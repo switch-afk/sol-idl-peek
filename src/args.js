@@ -3,7 +3,14 @@
 const { isValidAddress } = require('./address');
 
 const VALUE_OPTIONS = {
-  '--rpc': 'a URL',
+  '--rpc': { key: 'rpc', needs: 'a URL' },
+  '--instruction': { key: 'instruction', needs: 'a name' },
+};
+
+const FLAG_OPTIONS = {
+  '--json': 'json',
+  '--errors': 'errors',
+  '--types': 'types',
 };
 
 class UsageError extends Error {
@@ -30,6 +37,9 @@ function parseArgs(argv) {
   const opts = {
     program: null,
     rpc: null,
+    instruction: null,
+    errors: false,
+    types: false,
     json: false,
     help: false,
     version: false,
@@ -52,22 +62,23 @@ function parseArgs(argv) {
       opts.help = true;
     } else if (name === '--version' || name === '-v') {
       opts.version = true;
-    } else if (name === '--json') {
-      if (inline !== null) throw new UsageError('--json does not take a value');
-      opts.json = true;
+    } else if (FLAG_OPTIONS[name]) {
+      if (inline !== null) throw new UsageError(`${name} does not take a value`);
+      opts[FLAG_OPTIONS[name]] = true;
     } else if (VALUE_OPTIONS[name]) {
+      const { key, needs } = VALUE_OPTIONS[name];
       let value = inline;
       if (value === null) {
         value = argv[++i];
         if (value === undefined || value.startsWith('-')) {
-          throw new UsageError(`${name} needs ${VALUE_OPTIONS[name]}`);
+          throw new UsageError(`${name} needs ${needs}`);
         }
       }
       if (value === '') {
-        throw new UsageError(`${name} needs ${VALUE_OPTIONS[name]}`);
+        throw new UsageError(`${name} needs ${needs}`);
       }
 
-      opts.rpc = checkRpcUrl(value);
+      opts[key] = key === 'rpc' ? checkRpcUrl(value) : value;
     } else if (arg.startsWith('-')) {
       throw new UsageError(`Unknown option: ${name}`);
     } else if (opts.program === null) {
@@ -78,6 +89,10 @@ function parseArgs(argv) {
   }
 
   if (!opts.help && !opts.version) {
+    const views = [opts.instruction !== null, opts.errors, opts.types].filter(Boolean).length;
+    if (views > 1) {
+      throw new UsageError('Use only one of --instruction, --errors and --types');
+    }
     if (!opts.program) {
       throw new UsageError('Missing program address');
     }
