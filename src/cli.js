@@ -1,6 +1,8 @@
 'use strict';
 
 const { parseArgs, UsageError } = require('./args');
+const { createRpcClient, resolveRpcUrl, RpcError } = require('./rpc');
+const { fetchIdl, IdlError } = require('./idl');
 const { version } = require('../package.json');
 
 const HELP = `sol-idl-peek v${version}
@@ -21,6 +23,7 @@ Options:
 async function run(argv, io = {}) {
   const stdout = io.stdout || process.stdout;
   const stderr = io.stderr || process.stderr;
+  const env = io.env || process.env;
 
   let opts;
   try {
@@ -42,8 +45,23 @@ async function run(argv, io = {}) {
     return 0;
   }
 
-  stderr.write('Error: fetching IDLs is not implemented yet\n');
-  return 1;
+  const client = createRpcClient({
+    url: resolveRpcUrl(opts.rpc, env),
+    fetch: io.fetch,
+    sleep: io.sleep,
+  });
+
+  try {
+    const { idl } = await fetchIdl(client, opts.program);
+    stdout.write(JSON.stringify(idl, null, 2) + '\n');
+    return 0;
+  } catch (err) {
+    if (err instanceof RpcError || err instanceof IdlError) {
+      stderr.write(`Error: ${err.message}\n`);
+      return 1;
+    }
+    throw err;
+  }
 }
 
 module.exports = { run, HELP };
