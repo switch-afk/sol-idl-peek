@@ -1,6 +1,6 @@
 {
   "name": "sol-idl-peek",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Peek at the on-chain Anchor IDL of any Solana program from your terminal",
   "bin": {
     "sol-idl-peek": "bin/sol-idl-peek.js"
