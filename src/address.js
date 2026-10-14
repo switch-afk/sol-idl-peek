@@ -22,6 +22,22 @@ function decodeBase58(str) {
   return Uint8Array.from(bytes);
 }
 
+function encodeBase58(bytes) {
+  let num = 0n;
+  for (const byte of bytes) num = num * 256n + BigInt(byte);
+
+  let out = '';
+  while (num > 0n) {
+    out = ALPHABET[Number(num % 58n)] + out;
+    num /= 58n;
+  }
+  for (const byte of bytes) {
+    if (byte === 0) out = '1' + out;
+    else break;
+  }
+  return out;
+}
+
 function isValidAddress(value) {
   if (typeof value !== 'string') return false;
   if (value.length < 32 || value.length > 44) return false;
@@ -29,4 +45,4 @@ function isValidAddress(value) {
   return bytes !== null && bytes.length === 32;
 }
 
-module.exports = { decodeBase58, isValidAddress };
+module.exports = { decodeBase58, encodeBase58, isValidAddress };
