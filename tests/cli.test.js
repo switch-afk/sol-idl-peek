@@ -22,6 +22,7 @@ test('--help prints usage and exits 0', async () => {
   assert.equal(code, 0);
   assert.match(stdout.data, /Usage:/);
   assert.match(stdout.data, /--rpc/);
+  assert.match(stdout.data, /SOL_IDL_PEEK_RPC/);
   assert.match(stdout.data, /--json/);
 });
 

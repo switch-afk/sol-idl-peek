@@ -12,7 +12,7 @@ Usage:
   sol-idl-peek <program-address> [options]
 
 Options:
-  --rpc <url>       RPC endpoint
+  --rpc <url>       RPC endpoint (or set SOL_IDL_PEEK_RPC)
   --json            Print machine-readable JSON
   -h, --help        Show this help
   -v, --version     Show the version
