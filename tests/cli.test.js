@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { run } = require('../src/cli');
 const { version } = require('../package.json');
 const { createMockRpc, httpError } = require('./helpers/mock-rpc');
-const { SAMPLE_IDL, idlAccountBytes, accountInfo } = require('./helpers/fixtures');
+const { SAMPLE_IDL, OLD_STYLE_IDL, idlAccountBytes, accountInfo } = require('./helpers/fixtures');
 
 const PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
@@ -26,6 +26,7 @@ test('--help prints usage and exits 0', async () => {
   assert.match(stdout.data, /--rpc/);
   assert.match(stdout.data, /SOL_IDL_PEEK_RPC/);
   assert.match(stdout.data, /--json/);
+  assert.match(stdout.data, /full IDL/);
 });
 
 test('--version prints the package version', async () => {
@@ -45,14 +46,44 @@ test('usage errors exit 2 and print to stderr', async () => {
   assert.match(stderr.data, /Usage:/);
 });
 
-test('prints the on-chain IDL as JSON and exits 0', async () => {
+test('prints a readable summary by default and exits 0', async () => {
   const mock = createMockRpc({ getAccountInfo: accountInfo(idlAccountBytes(), PROGRAM) });
   const stdout = sink();
   const stderr = sink();
   const code = await run([PROGRAM], { stdout, stderr, fetch: mock.fetch, env: {} });
   assert.equal(code, 0);
   assert.equal(stderr.data, '');
+  assert.match(stdout.data, new RegExp(`^Program:    ${PROGRAM}$`, 'm'));
+  assert.match(stdout.data, /^IDL: {8}4nmzuuebvZ9EVghi2khvz9SyxUNvuXXdAzWtG5N7avYf$/m);
+  assert.match(stdout.data, /^ {2}initialize\(fee_authority: pubkey, fee_rate: u16\)$/m);
+});
+
+test('summarizes an old-style IDL too', async () => {
+  const mock = createMockRpc({
+    getAccountInfo: accountInfo(idlAccountBytes(OLD_STYLE_IDL), PROGRAM),
+  });
+  const stdout = sink();
+  const code = await run([PROGRAM], { stdout, stderr: sink(), fetch: mock.fetch, env: {} });
+  assert.equal(code, 0);
+  assert.match(stdout.data, /^Name:       marinade_finance 0\.1\.0$/m);
+});
+
+test('--json prints the full IDL unchanged', async () => {
+  const mock = createMockRpc({ getAccountInfo: accountInfo(idlAccountBytes(), PROGRAM) });
+  const stdout = sink();
+  const code = await run([PROGRAM, '--json'], { stdout, stderr: sink(), fetch: mock.fetch, env: {} });
+  assert.equal(code, 0);
   assert.deepEqual(JSON.parse(stdout.data), SAMPLE_IDL);
+});
+
+test('an IDL that is not a JSON object exits 1 with a clear message', async () => {
+  const mock = createMockRpc({ getAccountInfo: accountInfo(idlAccountBytes([1, 2, 3]), PROGRAM) });
+  const stdout = sink();
+  const stderr = sink();
+  const code = await run([PROGRAM], { stdout, stderr, fetch: mock.fetch, env: {} });
+  assert.equal(code, 1);
+  assert.equal(stdout.data, '');
+  assert.match(stderr.data, /not a JSON object/);
 });
 
 test('uses SOL_IDL_PEEK_RPC and the --rpc flag over the default', async () => {
